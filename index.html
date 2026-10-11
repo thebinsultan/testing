@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Purrlane — a cozy WebGL cat playground</title>
+    <meta
+      name="description"
+      content="Purrlane is an interactive WebGL playground full of procedurally generated cats. Pet them, feed them, toss yarn, change the time of day, and design your own kitten — all in real time."
+    />
+    <meta name="theme-color" content="#ffe7d3" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Purrlane — a cozy WebGL cat playground" />
+    <meta
+      property="og:description"
+      content="An interactive WebGL playground full of procedurally generated cats. Built with TypeScript + Three.js."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Interactive 3D cat playground"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <div class="ui">
+      <!-- ── Top bar ─────────────────────────────────────────────── -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand__paw" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="26" height="26">
+              <ellipse cx="16" cy="21" rx="7.6" ry="6.4" fill="currentColor" />
+              <ellipse cx="6.6" cy="13.4" rx="3.5" ry="4.3" fill="currentColor" />
+              <ellipse cx="13" cy="9" rx="3.6" ry="4.6" fill="currentColor" />
+              <ellipse cx="19.6" cy="9" rx="3.6" ry="4.6" fill="currentColor" />
+              <ellipse cx="25.8" cy="13.6" rx="3.4" ry="4.2" fill="currentColor" />
+            </svg>
+          </span>
+          <span class="brand__text">
+            <strong>Purrlane</strong>
+            <small>a cozy WebGL cat playground</small>
+          </span>
+        </div>
+
+        <div class="topbar__actions">
+          <button id="btnTime" class="chip" type="button" title="Cycle the time of day">
+            <span id="timeEmoji">🌤️</span>
+            <span id="timeLabel">Morning</span>
+          </button>
+          <button id="btnAuto" class="chip chip--icon" type="button" aria-pressed="true" title="Auto day/night cycle">
+            <span aria-hidden="true">🕰️</span>
+          </button>
+          <button id="btnSound" class="chip chip--icon" type="button" aria-pressed="true" title="Sound on / off">
+            <span id="soundIcon" aria-hidden="true">🔊</span>
+          </button>
+          <button id="btnPanel" class="chip chip--icon chip--only-mobile" type="button" title="Cat creator">
+            <span aria-hidden="true">🎨</span>
+          </button>
+          <button id="btnHelp" class="chip chip--icon" type="button" title="How to play">
+            <span aria-hidden="true">❔</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ── Selected cat card ───────────────────────────────────── -->
+      <section id="catCard" class="catcard hidden" aria-live="polite">
+        <button id="cardClose" class="catcard__close" type="button" aria-label="Close">×</button>
+        <div class="catcard__head">
+          <div class="catcard__avatar" id="cardAvatar">🐱</div>
+          <div>
+            <h2 id="cardName">Mochi</h2>
+            <p id="cardMood">feeling mysterious</p>
+          </div>
+        </div>
+        <p class="catcard__bio" id="cardBio">…</p>
+        <ul class="stats" id="cardStats"></ul>
+        <div class="catcard__actions">
+          <button class="btn btn--soft" data-card="pet" type="button">🐾 Pet</button>
+          <button class="btn btn--soft" data-card="nap" type="button">😴 Nap</button>
+          <button class="btn btn--soft" data-card="call" type="button">📣 Come here</button>
+        </div>
+      </section>
+
+      <!-- ── Cat creator ─────────────────────────────────────────── -->
+      <aside id="panel" class="panel" aria-label="Cat creator">
+        <div class="panel__head">
+          <div>
+            <h2>Cat Creator</h2>
+            <p>design a kitten, then adopt it</p>
+          </div>
+          <button id="panelClose" class="panel__close" type="button" aria-label="Close">×</button>
+        </div>
+
+        <div class="panel__body">
+          <label class="field">
+            <span>Name</span>
+            <span class="field__row">
+              <input id="inName" type="text" maxlength="14" value="Mochi" />
+              <button id="btnDice" class="btn btn--mini" type="button" title="Random name">🎲</button>
+            </span>
+          </label>
+
+          <label class="field">
+            <span>Pattern</span>
+            <select id="inPattern">
+              <option value="solid">Solid</option>
+              <option value="tabby">Tabby</option>
+              <option value="tuxedo">Tuxedo</option>
+              <option value="calico">Calico</option>
+              <option value="spotted">Spotted</option>
+              <option value="siamese">Siamese</option>
+            </select>
+          </label>
+
+          <div class="field field--colors">
+            <label><span>Fur</span><input id="inFur" type="color" value="#e8b070" /></label>
+            <label><span>Accent</span><input id="inAccent" type="color" value="#fff4e2" /></label>
+            <label><span>Eyes</span><input id="inEyes" type="color" value="#7fd4c1" /></label>
+          </div>
+
+          <label class="field field--slider">
+            <span>Size <em id="outSize">1.00×</em></span>
+            <input id="inSize" type="range" min="0.62" max="1.35" step="0.01" value="1" />
+          </label>
+          <label class="field field--slider">
+            <span>Ears <em id="outEars">1.00×</em></span>
+            <input id="inEars" type="range" min="0.55" max="1.6" step="0.01" value="1" />
+          </label>
+          <label class="field field--slider">
+            <span>Tail <em id="outTail">1.00×</em></span>
+            <input id="inTail" type="range" min="0.6" max="1.7" step="0.01" value="1" />
+          </label>
+          <label class="field field--slider">
+            <span>Fluff <em id="outFluff">0.50</em></span>
+            <input id="inFluff" type="range" min="0" max="1" step="0.01" value="0.5" />
+          </label>
+          <label class="field field--slider">
+            <span>Whiskers <em id="outWhiskers">4</em></span>
+            <input id="inWhiskers" type="range" min="2" max="6" step="1" value="4" />
+          </label>
+          <label class="field field--slider">
+            <span>Energy <em id="outEnergy">0.60</em></span>
+            <input id="inEnergy" type="range" min="0" max="1" step="0.01" value="0.6" />
+          </label>
+        </div>
+
+        <div class="panel__foot">
+          <button id="btnRandom" class="btn btn--ghost" type="button">🎲 Surprise me</button>
+          <button id="btnAdopt" class="btn btn--primary" type="button">✨ Adopt kitten</button>
+        </div>
+      </aside>
+
+      <!-- ── Help sheet ──────────────────────────────────────────── -->
+      <section id="help" class="help hidden">
+        <h2>How to play 🐾</h2>
+        <ul>
+          <li><b>Drag</b> to orbit, <b>scroll / pinch</b> to zoom, <b>right-drag</b> to pan.</li>
+          <li><b>Hover a cat and wiggle the mouse</b> to pet it — it will purr and melt into a loaf.</li>
+          <li><b>Click a cat</b> to meet them and see their personality meters.</li>
+          <li>Pick the <b>🐟 Treat</b> or <b>🧶 Yarn</b> tool, then click the rug to toss something.</li>
+          <li>Use <b>🎨 Cat Creator</b> to sculpt a kitten and adopt it into the room.</li>
+          <li>Hit <b>⚡ Zoomies</b> when you simply need chaos.</li>
+        </ul>
+        <button id="helpClose" class="btn btn--primary" type="button">Got it</button>
+      </section>
+
+      <!-- ── Dock ────────────────────────────────────────────────── -->
+      <div class="dock-wrap">
+        <p id="hint" class="hint">Drag to look around · hover a cat to pet it</p>
+        <nav class="dock" aria-label="Tools">
+          <button class="tool is-active" data-tool="pet" type="button">
+            <span aria-hidden="true">🐾</span><em>Pet</em>
+          </button>
+          <button class="tool" data-tool="treat" type="button">
+            <span aria-hidden="true">🐟</span><em>Treat</em>
+          </button>
+          <button class="tool" data-tool="yarn" type="button">
+            <span aria-hidden="true">🧶</span><em>Yarn</em>
+          </button>
+          <button class="tool" data-tool="zoomies" type="button">
+            <span aria-hidden="true">⚡</span><em>Zoomies</em>
+          </button>
+          <button class="tool" data-action="new" type="button">
+            <span aria-hidden="true">✨</span><em>New cat</em>
+          </button>
+          <button class="tool" data-action="nap" type="button">
+            <span aria-hidden="true">😴</span><em>Nap time</em>
+          </button>
+        </nav>
+      </div>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <div id="statline" class="statline">0 cats · 0 pets given</div>
+    </div>
+
+    <div id="loader" class="loader">
+      <div class="loader__inner">
+        <div class="loader__paw" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="46" height="46">
+            <ellipse cx="16" cy="21" rx="7.6" ry="6.4" fill="currentColor" />
+            <ellipse cx="6.6" cy="13.4" rx="3.5" ry="4.3" fill="currentColor" />
+            <ellipse cx="13" cy="9" rx="3.6" ry="4.6" fill="currentColor" />
+            <ellipse cx="19.6" cy="9" rx="3.6" ry="4.6" fill="currentColor" />
+            <ellipse cx="25.8" cy="13.6" rx="3.4" ry="4.2" fill="currentColor" />
+          </svg>
+        </div>
+        <p>waking the kittens…</p>
+      </div>
+    </div>
+
+    <noscript>
+      <div class="noscript">Purrlane needs JavaScript and WebGL to run. Please enable them and reload. 🐾</div>
+    </noscript>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
